@@ -1,0 +1,18 @@
+AOC 2021
+Day 3
+
+# Libs
+
+```{r}
+
+```
+
+# Data
+
+Read the data and set names
+
+```{r}
+raw_data <- 
+  read_delim(file = "day3/data/", 
+             col_names = c())
+```

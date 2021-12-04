@@ -1,0 +1,126 @@
+AOC 2021
+Day 2
+
+# Libs
+
+```{r}
+library(dplyr)
+library(rvest)
+library(readr)
+library(RcppRoll)
+```
+
+# Data
+
+Read the data and set names
+
+```{r}
+raw_data <- 
+  read_delim(file = "day2/data/input.txt", 
+             col_names = c("dir", "val"))
+```
+
+# Part 1
+
+## Task
+
+Info
+
+> forward X increases the horizontal position by X units.
+down X increases the depth by X units.
+up X decreases the depth by X units.
+
+Question
+
+> Calculate the horizontal position and depth you would have after following the planned course. What do you get if you multiply your final horizontal position by your final depth?
+
+## Solutions
+
+So we sum forward, up and down
+
+```{r}
+dir_sums <- 
+  raw_data %>% 
+  group_by(dir) %>% 
+  summarise(tot = sum(val))
+```
+
+Then we isolate each, and calculate depth as down - up
+
+```{r}
+forward <-
+  dir_sums %>% 
+  filter(dir == 'forward') %>% 
+  pull(tot)
+
+up <- 
+  dir_sums %>% 
+  filter(dir == 'up') %>% 
+  pull(tot)
+
+down <- 
+  dir_sums %>% 
+  filter(dir == 'down') %>% 
+  pull(tot)
+
+depth <- down - up
+```
+
+Then we mutiply for the result
+
+```{r}
+res <- forward * depth
+```
+
+# Part 2
+
+## Task
+
+down X increases your aim by X units.
+up X decreases your aim by X units.
+forward X does two things:
+It increases your horizontal position by X units.
+It increases your depth by your aim multiplied by X.
+
+Using this new interpretation of the commands, calculate the horizontal position and depth you would have after following the planned course. What do you get if you multiply your final horizontal position by your final depth?
+
+## Solution
+
+Like day 1 we need to look at whats happening in a rolling window for depth?
+
+Calculate current depth
+
+```{r}
+with_depth <- 
+  raw_data %>% 
+  mutate(
+    aim.val = case_when(
+      dir == "up" ~ val * (-1),
+      dir == "down" ~ val,
+      TRUE ~ 0
+    ),
+    aim = cumsum(aim.val)
+  ) %>% 
+  filter(dir == 'forward') %>% 
+  mutate(
+    depth = aim  * val
+  )
+```
+
+Then we compute total depth and position at the end
+
+```{r}
+final_vals <-
+  with_depth %>% 
+  summarise(
+    final_hdir = sum(val), 
+    final_depth = sum(depth)
+  )
+```
+
+Get the result of task 2 by multiplying
+
+```{r}
+final_vals$final_hdir * final_vals$final_depth
+```
+
