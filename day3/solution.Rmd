@@ -4,7 +4,11 @@ Day 3
 # Libs
 
 ```{r}
-
+library(dplyr)
+library(readr)
+library(tidyr)
+library(stringr)
+library(purrr)
 ```
 
 # Data
@@ -13,6 +17,197 @@ Read the data and set names
 
 ```{r}
 raw_data <- 
-  read_delim(file = "day3/data/", 
-             col_names = c())
+  read_delim(file = "day3/data/input.txt", 
+             delim = "|",
+             col_names = c('bits'))
 ```
+
+# Part 1
+
+# Info
+
+> You need to use the binary numbers in the diagnostic report to generate two new binary numbers (called the gamma rate and the epsilon rate). The power consumption can then be found by multiplying the gamma rate by the epsilon rate.
+
+> Each bit in the gamma rate can be determined by finding the most common bit in the corresponding position of all numbers in the diagnostic report
+
+> The epsilon rate is calculated in a similar way; rather than use the most common bit, the least common bit from each position is used. So, the epsilon rate is 01001, or 9 in decimal
+
+# Solution
+
+Make a table with each bit in a cell
+
+```{r}
+bits_tbl <-
+  raw_data %>% 
+  pull(bits) %>% 
+  str_split(pattern = "", n = 12, simplify = TRUE) %>% 
+  data.frame() %>% 
+  set_names(paste0("bit", 1:12)) %>% 
+  as_tibble()
+```
+
+If sum of bits converted to integers is above half the length of the data, then its the most common
+
+```{r}
+min_sum <- nrow(bits_tbl) / 2
+```
+
+Gamma
+
+```{r}
+gamma_bit <-
+  bits_tbl %>% 
+  summarise(
+    across(everything(),
+           ~{ 
+             if(sum(as.integer(.x)) >= min_sum) 1 else 0})) %>% 
+  unite('gamma', bit1:bit12, sep = '')
+
+gamma_dec <- strtoi(pull(gamma_bit), base = 2)
+```
+
+Epsilon
+
+```{r}
+epsilon_bit <-
+  bits_tbl %>% 
+  summarise(
+    across(everything(),
+           ~{ 
+             if(sum(as.integer(.x)) <= min_sum) 1 else 0})) %>% 
+  unite('epsilon', bit1:bit12, sep = '')
+
+epsilon_dec <- strtoi(pull(epsilon_bit), base = 2)
+```
+
+Power
+
+```{r}
+epsilon_dec * gamma_dec
+```
+
+# Part 2
+
+# Info
+
+> Verify the life support rating, which can be determined by multiplying the oxygen generator rating by the CO2 scrubber rating
+
+> start with the full list of binary numbers from your diagnostic report and consider just the first bit of those numbers
+
+> Keep only numbers selected by the bit criteria for the type of rating value for which you are searching. Discard numbers which do not match the bit criteria.
+If you only have one number left, stop; this is the rating value for which you are searching.
+Otherwise, repeat the process, considering the next bit to the right.
+
+> The bit criteria depends on which type of rating value you want to find:
+
+> To find oxygen generator rating, determine the most common value (0 or 1) in the current bit position, and keep only numbers with that bit in that position. If 0 and 1 are equally common, keep values with a 1 in the position being considered.
+> To find CO2 scrubber rating, determine the least common value (0 or 1) in the current bit position, and keep only numbers with that bit in that position. If 0 and 1 are equally common, keep values with a 0 in the position being considered.
+
+# Solution
+
+Oxygen: Filter out numbers depending on most common number (ie gamma)
+
+CO2: Use epsilon
+
+With while, we use the logic for gamma first, to find oxygen
+
+```{r}
+bits_pos_init <- 1
+bits_tbl_init <- bits_tbl
+rows_left <- nrow(bits_tbl_init)
+
+while(rows_left > 1){
+  
+  min_sum <- nrow(bits_tbl_init) / 2
+  
+  gamma_bit_init <-
+    bits_tbl_init %>% 
+    summarise(
+      across(everything(),
+             ~{ 
+               if(sum(as.integer(.x)) >= min_sum) 1 else 0})) %>% 
+    unite('gamma', bit1:bit12, sep = '')
+  
+  gamma_pos_init <- substr(pull(gamma_bit_init),
+                           start = bits_pos_init,
+                           stop = bits_pos_init)
+  
+  var_name_init <- paste0("bit", bits_pos_init)
+  
+  bits_tbl_init <-
+    bits_tbl_init %>% 
+    filter(
+      !!sym(var_name_init) == gamma_pos_init
+    )
+  
+  rows_left <- nrow(bits_tbl_init)
+  
+  bits_pos_init <- bits_pos_init + 1
+  
+}
+```
+
+Convert to bit and dec
+
+```{r}
+o2_bit <- 
+  bits_tbl_init %>% 
+  unite('o2', bit1:bit12, sep = '')
+
+o2_dec <- strtoi(pull(o2_bit), base = 2)
+```
+
+Then we do the same, with small adaptations, for co2:
+
+```{r}
+bits_pos_init <- 1
+bits_tbl_init <- bits_tbl
+rows_left <- nrow(bits_tbl_init)
+
+while(rows_left > 1){
+  
+  min_sum <- nrow(bits_tbl_init) / 2
+  
+  epsilon_bit_init <-
+    bits_tbl_init %>% 
+    summarise(
+      across(everything(),
+             ~{ 
+               if(sum(as.integer(.x)) < min_sum) 1 else 0})) %>% 
+    unite('epsilon', bit1:bit12, sep = '')
+  
+  epsilon_pos_init <- substr(pull(epsilon_bit_init),
+                           start = bits_pos_init,
+                           stop = bits_pos_init)
+  
+  var_name_init <- paste0("bit", bits_pos_init)
+  
+  bits_tbl_init <-
+    bits_tbl_init %>% 
+    filter(
+      !!sym(var_name_init) == epsilon_pos_init
+    )
+  
+  rows_left <- nrow(bits_tbl_init)
+  
+  bits_pos_init <- bits_pos_init + 1
+  
+}
+```
+
+Convert to bit and dec
+
+```{r}
+co2_bit <- 
+  bits_tbl_init %>% 
+  unite('co2', bit1:bit12, sep = '')
+
+co2_dec <- strtoi(pull(co2_bit), base = 2)
+```
+
+Life support rating:
+
+```{r}
+o2_dec * co2_dec
+```
+

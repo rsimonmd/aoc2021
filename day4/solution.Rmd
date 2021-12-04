@@ -1,0 +1,23 @@
+AOC 2021
+Day 4
+
+# Libs
+
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(stringr)
+library(purrr)
+```
+
+# Data
+
+Read the data and set names
+
+```{r}
+raw_data <- 
+  read_delim(file = "day4/data/input.txt", 
+             delim = "|",
+             col_names = c('bits'))
+```
