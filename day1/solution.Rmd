@@ -1,0 +1,72 @@
+AOC 2021
+Day 1
+
+# Libs
+
+```{r}
+library(dplyr)
+library(readr)
+library(stringr)
+library(RcppRoll)
+```
+
+# Data 
+
+Read the txt file and set a better col name
+
+```{r}
+day1_data <- 
+  read_delim(
+    file = 'data/input.txt',
+    delim = "|", col_names = FALSE
+  ) %>%
+  setNames("vals")
+```
+
+# Part 1
+
+Judge if values increase or decrease from previous val, then count how many increase: 
+
+```{r}
+part1_df <-
+  day1_data %>% 
+  mutate(change = vals - lag(vals, default = NA), 
+         change_q = case_when(
+           change > 0 ~ 'increased',
+           change < 0 ~ 'decreased',
+           TRUE ~ 'stable'))
+```
+
+Count
+
+```{r}
+res <- 
+  part1_df %>% 
+  summarise(n = sum(change_q == 'increased')) %>% 
+  pull(n)
+```
+
+# Part 2
+
+Same but in a 3 values sliding window
+
+```{r}
+part2_df <- 
+  day1_data %>% 
+  mutate(
+    sum3 = roll_suml(x = vals, n = 3), 
+    sum3_change = case_when(
+           sum3 - lag(sum3, default = NA, n = 1) > 0 ~ 'increased',
+           TRUE ~ 'ignore')
+    )
+```
+
+Count
+
+```{r}
+res <- 
+  part2_df %>% 
+  summarise(n = sum(sum3_change == 'increased')) %>% 
+  pull(n)
+```
+
